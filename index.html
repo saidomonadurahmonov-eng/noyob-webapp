@@ -203,6 +203,12 @@ function mAddGo(){ addToCart(mId,mQty); el('pmodal').classList.remove('show'); }
 function cartCount(){ return Object.values(cart).reduce((a,c)=>a+c.qty,0); }
 function cartTotal(){ return Object.values(cart).reduce((a,c)=>a+c.qty*c.price,0); }
 
+const OPTOM_MIN = 500000, OPTOM_PCT = 1;
+function optomCalc(total){
+  if(total >= OPTOM_MIN){ const d = Math.round(total*OPTOM_PCT/100); return {is:true, d, pay: total-d}; }
+  return {is:false, d:0, pay: total};
+}
+
 function renderCartBar(){
   const n = cartCount();
   el('cartbar').classList.toggle('show', n>0);
@@ -226,6 +232,12 @@ function openCart(){
         </div>`).join('')}
       </div>
       <div class="total"><span>Jami:</span><span>${fmt(cartTotal())}</span></div>
+      ${(()=>{const o=optomCalc(cartTotal());
+        return o.is
+          ? `<div class="total" style="color:#34c759;font-size:14px"><span>🏷 Optom chegirma (${OPTOM_PCT}%):</span><span>−${fmt(o.d)}</span></div>
+             <div class="total"><span>💳 To'lanadigan:</span><span>${fmt(o.pay)}</span></div>`
+          : `<div class="note" style="background:rgba(255,149,0,.12);padding:8px 10px;border-radius:10px">🏷 Optomgacha yana <b>${fmt(OPTOM_MIN-cartTotal())}</b> qoldi — ${OPTOM_PCT}% chegirma olasiz!</div>`;
+      })()}
       <div class="note">📍 Buyurtma «Noyob DUKON 2» filialiga rasmiylashtiriladi. To'lov do'konda, olib ketishda.</div>
       <button class="addbtn" onclick="checkout()">✅ Buyurtma berish</button>
     </div>`;
