@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Noyob Do'kon</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg: var(--tg-theme-bg-color, #f4f4f7);
+  --card: var(--tg-theme-secondary-bg-color, #ffffff);
+  --text: var(--tg-theme-text-color, #1a1a1a);
+  --hint: var(--tg-theme-hint-color, #8e8e93);
+  --accent: var(--tg-theme-button-color, #2481cc);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:90px}
+.header{padding:14px 16px 6px}
+.header h1{font-size:20px}
+.header .sub{color:var(--hint);font-size:13px;margin-top:2px}
+.search{margin:10px 16px;display:flex;gap:8px}
+.search input{flex:1;border:none;border-radius:12px;padding:11px 14px;font-size:15px;background:var(--card);color:var(--text);outline:none}
+.section-title{font-size:16px;font-weight:700;margin:14px 16px 8px}
+.news{display:flex;gap:10px;overflow-x:auto;padding:2px 16px 6px;scrollbar-width:none}
+.news::-webkit-scrollbar{display:none}
+.news-card{flex:0 0 130px;background:var(--card);border-radius:14px;overflow:hidden;position:relative;cursor:pointer}
+.news-card img{width:130px;height:130px;object-fit:cover;display:block;background:#e8e8ee}
+.news-card .nbadge{position:absolute;top:6px;left:6px;background:#ff3b30;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px}
+.news-card .nname{font-size:11px;padding:6px 8px 2px;height:32px;overflow:hidden;line-height:1.2}
+.news-card .nprice{font-size:12px;font-weight:700;padding:0 8px 8px;color:var(--accent)}
+.cats{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 8px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;background:var(--card);border-radius:18px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
+.chip.active{background:var(--accent);color:var(--accent-text)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 16px}
+.pcard{background:var(--card);border-radius:14px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.pcard img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#e8e8ee}
+.pcard .noimg{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:34px;background:#e8e8ee}
+.pcard .pname{font-size:12.5px;padding:8px 10px 2px;height:48px;overflow:hidden;line-height:1.25}
+.pcard .pprice{font-size:14px;font-weight:700;padding:0 10px}
+.pcard .pstock{font-size:11px;color:var(--hint);padding:2px 10px 8px}
+.pcard .pstock.out{color:#ff3b30}
+.pcard button{margin:0 10px 10px;border:none;border-radius:10px;padding:8px;background:var(--accent);color:var(--accent-text);font-size:13px;font-weight:600;cursor:pointer}
+.pcard button:disabled{background:#c7c7cc}
+.empty{text-align:center;color:var(--hint);padding:40px 20px;font-size:14px}
+.cartbar{position:fixed;bottom:0;left:0;right:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card);box-shadow:0 -2px 12px rgba(0,0,0,.08);display:none}
+.cartbar.show{display:block}
+.cartbar .btn{width:100%;border:none;border-radius:12px;padding:14px;background:var(--accent);color:var(--accent-text);font-size:16px;font-weight:700;cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:50}
+.modal.show{display:flex}
+.sheet{background:var(--bg);width:100%;max-height:88vh;border-radius:18px 18px 0 0;overflow-y:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.sheet img.big{width:100%;max-height:46vh;object-fit:contain;background:#fff}
+.sheet .body{padding:14px 16px}
+.sheet h2{font-size:17px;line-height:1.3}
+.sheet .price{font-size:20px;font-weight:800;color:var(--accent);margin:8px 0 2px}
+.sheet .meta{color:var(--hint);font-size:13px;margin-bottom:14px}
+.qtyrow{display:flex;align-items:center;gap:14px;margin:10px 0 16px}
+.qtyrow button{width:44px;height:44px;border-radius:12px;border:none;background:var(--card);font-size:22px;cursor:pointer;color:var(--text)}
+.qtyrow .qv{font-size:18px;font-weight:700;min-width:40px;text-align:center}
+.sheet .addbtn{width:100%;border:none;border-radius:12px;padding:14px;background:var(--accent);color:var(--accent-text);font-size:16px;font-weight:700;cursor:pointer}
+.sheet .addbtn:disabled{background:#c7c7cc}
+.cartlist .ci{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(128,128,128,.15)}
+.cartlist .ci img{width:54px;height:54px;border-radius:10px;object-fit:cover;background:#e8e8ee}
+.cartlist .ci .nm{flex:1;font-size:13px;line-height:1.25}
+.cartlist .ci .ctr{display:flex;align-items:center;gap:8px}
+.cartlist .ci .ctr button{width:30px;height:30px;border-radius:8px;border:none;background:var(--card);font-size:16px;cursor:pointer;color:var(--text)}
+.total{display:flex;justify-content:space-between;font-size:16px;font-weight:800;margin:14px 0}
+.note{color:var(--hint);font-size:12px;margin-bottom:12px}
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(30,30,30,.92);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;z-index:99;display:none}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🛍 Noyob Do'kon</h1>
+  <div class="sub" id="updated"></div>
+</div>
+<div class="search"><input id="q" type="search" placeholder="🔍 Mahsulot qidirish..."></div>
+
+<div id="newsWrap">
+  <div class="section-title">🆕 Yangi kelganlar</div>
+  <div class="news" id="news"></div>
+</div>
+
+<div class="cats" id="cats"></div>
+<div class="grid" id="grid"></div>
+<div class="empty" id="empty" style="display:none">Hech narsa topilmadi 😕</div>
+
+<div class="cartbar" id="cartbar"><button class="btn" id="cartbtn"></button></div>
+
+<div class="modal" id="pmodal"><div class="sheet" id="psheet"></div></div>
+<div class="modal" id="cmodal"><div class="sheet" id="csheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram ? Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
+let DATA = {products: [], categories: []};
+let cart = {};   // id -> {id,name,price,qty,photo,stock}
+let activeCat = '';
+let query = '';
+
+const fmt = n => new Intl.NumberFormat('uz-UZ').format(Math.round(n)) + " so'm";
+const el = id => document.getElementById(id);
+
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',1600); }
+
+async function load(){
+  try{
+    const r = await fetch('data/products.json?v=' + Date.now());
+    DATA = await r.json();
+    el('updated').textContent = 'Yangilangan: ' + (DATA.generated_at || '');
+    render();
+  }catch(e){
+    el('empty').style.display='block';
+    el('empty').textContent='Katalog yuklanmadi. Internetni tekshiring.';
+  }
+}
+
+function render(){ renderNews(); renderCats(); renderGrid(); renderCartBar(); }
+
+function renderNews(){
+  const news = DATA.products.filter(p=>p.is_new && p.photo).slice(0,12);
+  if(!news.length){ el('newsWrap').style.display='none'; return; }
+  el('newsWrap').style.display='block';
+  el('news').innerHTML = news.map(p=>`
+    <div class="news-card" onclick="openProduct('${p.id}')">
+      <span class="nbadge">YANGI</span>
+      <img src="${p.photo}" loading="lazy" onerror="this.style.display='none'">
+      <div class="nname">${esc(p.name)}</div>
+      <div class="nprice">${fmt(p.price)}</div>
+    </div>`).join('');
+}
+
+function renderCats(){
+  const cats = [{id:'',name:'Hammasi'}].concat(DATA.categories||[]);
+  el('cats').innerHTML = cats.map(c=>`<div class="chip ${activeCat===c.id?'active':''}" onclick="setCat('${c.id}')">${esc(c.name)}</div>`).join('');
+}
+
+function setCat(id){ activeCat=id; renderCats(); renderGrid(); }
+
+function filtered(){
+  let list = DATA.products;
+  if(activeCat) list = list.filter(p=>p.cat===activeCat);
+  if(query) { const q=query.toLowerCase(); list=list.filter(p=>p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)); }
+  return list;
+}
+
+function renderGrid(){
+  const list = filtered();
+  el('empty').style.display = list.length ? 'none':'block';
+  el('grid').innerHTML = list.slice(0,200).map(p=>`
+    <div class="pcard">
+      <div onclick="openProduct('${p.id}')">
+        ${p.photo?`<img src="${p.photo}" loading="lazy" onerror="this.outerHTML='<div class=noimg>📦</div>'">`:`<div class="noimg">📦</div>`}
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pprice">${fmt(p.price)}</div>
+        <div class="pstock ${p.stock>0?'':'out'}">${p.stock>0?('Mavjud: '+p.stock):'Qolmagan'}</div>
+      </div>
+      <button ${p.stock>0?'':'disabled'} onclick="quickAdd('${p.id}')">${p.stock>0?'🛒 Savatga':'Qolmagan'}</button>
+    </div>`).join('');
+}
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function getP(id){ return DATA.products.find(p=>p.id===id); }
+
+function quickAdd(id){ addToCart(id,1); }
+
+function addToCart(id, qty){
+  const p = getP(id); if(!p) return;
+  const cur = cart[id] ? cart[id].qty : 0;
+  if(cur + qty > p.stock){ toast('Qoldiq yetarli emas (bor: '+p.stock+')'); return; }
+  cart[id] = {id:p.id, name:p.name, price:p.price, photo:p.photo, stock:p.stock, qty:cur+qty};
+  toast('✅ Savatga qo\'shildi');
+  renderCartBar();
+}
+
+let mQty = 1, mId = null;
+function openProduct(id){
+  const p = getP(id); if(!p) return;
+  mId = id; mQty = 1;
+  el('psheet').innerHTML = `
+    ${p.photo?`<img class="big" src="${p.photo}">`:''}
+    <div class="body">
+      <h2>${esc(p.name)}</h2>
+      <div class="price">${fmt(p.price)}</div>
+      <div class="meta">${p.stock>0?('📊 Mavjud: '+p.stock+' dona'):'⛔️ Hozircha qolmagan'} ${p.sku?(' · Artikul: '+esc(p.sku)):''}</div>
+      ${p.stock>0?`
+      <div class="qtyrow">
+        <button onclick="mAdj(-1)">−</button>
+        <div class="qv" id="mqv">1</div>
+        <button onclick="mAdj(1)">+</button>
+      </div>
+      <button class="addbtn" onclick="mAddGo()">🛒 Savatga qo'shish</button>`:
+      `<button class="addbtn" disabled>Qolmagan</button>`}
+    </div>`;
+  el('pmodal').classList.add('show');
+}
+function mAdj(d){ const p=getP(mId); mQty=Math.max(1,Math.min(p.stock,mQty+d)); el('mqv').textContent=mQty; }
+function mAddGo(){ addToCart(mId,mQty); el('pmodal').classList.remove('show'); }
+
+function cartCount(){ return Object.values(cart).reduce((a,c)=>a+c.qty,0); }
+function cartTotal(){ return Object.values(cart).reduce((a,c)=>a+c.qty*c.price,0); }
+
+function renderCartBar(){
+  const n = cartCount();
+  el('cartbar').classList.toggle('show', n>0);
+  if(n>0) el('cartbtn').textContent = `🛒 Savat · ${n} ta · ${fmt(cartTotal())}`;
+}
+
+el('cartbtn').onclick = openCart;
+function openCart(){
+  const items = Object.values(cart);
+  el('csheet').innerHTML = `
+    <div class="body">
+      <h2>🛒 Savat</h2>
+      <div class="cartlist">
+      ${items.map(c=>`
+        <div class="ci">
+          ${c.photo?`<img src="${c.photo}">`:`<div style="width:54px;height:54px;border-radius:10px;background:#e8e8ee;display:flex;align-items:center;justify-content:center">📦</div>`}
+          <div class="nm">${esc(c.name)}<br><b>${fmt(c.price*c.qty)}</b></div>
+          <div class="ctr">
+            <button onclick="cAdj('${c.id}',-1)">−</button><span>${c.qty}</span><button onclick="cAdj('${c.id}',1)">+</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="total"><span>Jami:</span><span>${fmt(cartTotal())}</span></div>
+      <div class="note">📍 Buyurtma «Noyob DUKON 2» filialiga rasmiylashtiriladi. To'lov do'konda, olib ketishda.</div>
+      <button class="addbtn" onclick="checkout()">✅ Buyurtma berish</button>
+    </div>`;
+  el('cmodal').classList.add('show');
+}
+function cAdj(id,d){
+  if(!cart[id]) return;
+  const p = getP(id);
+  let q = cart[id].qty + d;
+  if(p && q > p.stock){ toast('Qoldiq yetarli emas'); return; }
+  if(q<=0) delete cart[id]; else cart[id].qty=q;
+  renderCartBar();
+  if(cartCount()===0) el('cmodal').classList.remove('show'); else openCart();
+}
+
+function checkout(){
+  const items = Object.values(cart).map(c=>({id:c.id, name:c.name, price:c.price, qty:c.qty}));
+  if(!items.length) return;
+  const payload = JSON.stringify({v:1, items});
+  if(tg && tg.sendData){
+    tg.sendData(payload);   // bot web_app_data orqali qabul qiladi va yopiladi
+  } else {
+    alert('Bu tugma faqat Telegram ichida ishlaydi.');
+  }
+}
+
+el('q').addEventListener('input', e=>{ query=e.target.value.trim(); renderGrid(); });
+['pmodal','cmodal'].forEach(id=>{
+  el(id).addEventListener('click', e=>{ if(e.target.id===id) el(id).classList.remove('show'); });
+});
+
+load();
+</script>
+</body>
+</html>
