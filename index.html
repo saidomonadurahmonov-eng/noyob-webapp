@@ -31,6 +31,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .news-card .nbadge{position:absolute;top:6px;left:6px;background:#ff3b30;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px}
 .news-card .nname{font-size:11px;padding:6px 8px 2px;height:32px;overflow:hidden;line-height:1.2}
 .news-card .nprice{font-size:12px;font-weight:700;padding:0 8px 8px;color:var(--accent)}
+.news-card .nbadge.disc{background:#ff9500}
+.news-card .nbadge.top{background:#34c759}
+.oldp{color:var(--hint);text-decoration:line-through;font-weight:400;font-size:11px;margin-right:4px}
+.discbadge{position:absolute;top:6px;right:6px;background:#ff3b30;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px}
 .cats{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 8px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;background:var(--card);border-radius:18px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap}
@@ -100,10 +104,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="view active" id="v-shop">
   <div class="header"><h1>🛍 Noyob Do'kon</h1><div class="sub" id="updated"></div></div>
   <div class="search"><input id="q" type="search" placeholder="🔍 Mahsulot qidirish..."></div>
-  <div id="newsWrap">
-    <div class="section-title">🆕 Yangi kelganlar</div>
-    <div class="news" id="news"></div>
-  </div>
+  <div id="shelves"></div>
   <div class="cats" id="cats"></div>
   <div class="grid" id="grid"></div>
   <div class="empty" id="empty" style="display:none">Hech narsa topilmadi 😕</div>
@@ -182,17 +183,21 @@ async function load(){
 }
 
 /* ---------- DO'KON ---------- */
-function renderShop(){ renderNews(); renderCats(); renderGrid(); }
-function renderNews(){
-  const news = DATA.products.filter(p=>p.is_new && p.photo).slice(0,12);
-  if(!news.length){ el('newsWrap').style.display='none'; return; }
-  el('newsWrap').style.display='block';
-  el('news').innerHTML = news.map(p=>`
-    <div class="news-card" onclick="openProduct('${p.id}')">
-      <span class="nbadge">YANGI</span>
-      <img src="${p.photo}" loading="lazy" onerror="this.style.display='none'">
-      <div class="nname">${esc(p.name)}</div>
-      <div class="nprice">${fmt(p.price)}</div>
+function renderShop(){ renderShelves(); renderCats(); renderGrid(); }
+const BADGE_CLASS = {discount:'disc', top:'top', new:''};
+function renderShelves(){
+  const shelves = DATA.shelves || [];
+  if(!shelves.length){ el('shelves').innerHTML=''; return; }
+  el('shelves').innerHTML = shelves.map(sh=>`
+    <div class="section-title">${esc(sh.title)}</div>
+    <div class="news">
+      ${sh.items.map(p=>`
+        <div class="news-card" onclick="openProduct('${p.id}')">
+          <span class="nbadge ${BADGE_CLASS[sh.key]||''}">${p.disc?('-'+p.disc+'%'):esc(sh.badge)}</span>
+          ${p.photo?`<img src="${p.photo}" loading="lazy" onerror="this.style.display='none'">`:`<div style="width:130px;height:130px;background:#e8e8ee;display:flex;align-items:center;justify-content:center;font-size:34px">📦</div>`}
+          <div class="nname">${esc(p.name)}</div>
+          <div class="nprice">${p.old_price?`<span class="oldp">${fmt(p.old_price)}</span>`:''}${fmt(p.price)}</div>
+        </div>`).join('')}
     </div>`).join('');
 }
 function renderCats(){
@@ -211,10 +216,11 @@ function renderGrid(){
   el('empty').style.display = list.length ? 'none':'block';
   el('grid').innerHTML = list.slice(0,300).map(p=>`
     <div class="pcard">
-      <div onclick="openProduct('${p.id}')">
+      <div onclick="openProduct('${p.id}')" style="position:relative">
+        ${p.disc?`<span class="discbadge">-${p.disc}%</span>`:''}
         ${p.photo?`<img src="${p.photo}" loading="lazy" onerror="this.outerHTML='<div class=noimg>📦</div>'">`:`<div class="noimg">📦</div>`}
         <div class="pname">${esc(p.name)}</div>
-        <div class="pprice">${fmt(p.price)}</div>
+        <div class="pprice">${p.old_price?`<span class="oldp">${fmt(p.old_price)}</span>`:''}${fmt(p.price)}</div>
       </div>
       <button onclick="quickAdd('${p.id}')">🛒 Savatga</button>
     </div>`).join('');
@@ -236,7 +242,7 @@ function openProduct(id){
     ${p.photo?`<img class="big" src="${p.photo}">`:''}
     <div class="body">
       <h2>${esc(p.name)}</h2>
-      <div class="price">${fmt(p.price)}</div>
+      <div class="price">${p.old_price?`<span class="oldp" style="font-size:16px">${fmt(p.old_price)}</span> `:''}${fmt(p.price)}${p.disc?` <span class="discbadge" style="position:static;display:inline-block">-${p.disc}%</span>`:''}</div>
       <div class="meta">✅ Sotuvda mavjud${p.sku?(' · Artikul: '+esc(p.sku)):''}</div>
       <div class="qtyrow">
         <button onclick="mAdj(-1)">−</button><div class="qv" id="mqv">1</div><button onclick="mAdj(1)">+</button>
