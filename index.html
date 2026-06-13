@@ -175,11 +175,29 @@ async function load(){
     const r = await fetch('data/products.json?v=' + Date.now());
     DATA = await r.json();
     el('updated').textContent = 'Yangilangan: ' + (DATA.generated_at || '');
+    if(DATA.authed){ await loadAuthedCatalog(); return; }
     renderShop();
   }catch(e){
     el('empty').style.display='block';
     el('empty').textContent='Katalog yuklanmadi. Internetni tekshiring.';
   }
+}
+
+// Himoyalangan (optom) ilova: katalog API'dan, faqat tasdiqlangan mijozga
+async function loadAuthedCatalog(){
+  if(!INIT){ el('shelves').innerHTML=''; el('grid').innerHTML=''; el('empty').style.display='block'; el('empty').innerHTML='📱 Optom katalogni telefoningizdagi <b>Telegram ilovasida</b> oching.'; return; }
+  try{
+    const r = await fetch(DATA.api_url + '/api/catalog', {headers:{'X-Init-Data': INIT}});
+    const d = await r.json();
+    if(d.linked===false){ gateMsg('📞 Avval botga telefon raqamingizni yuboring.'); return; }
+    if(d.approved===false){ gateMsg('⏳ So\'rovingiz ko\'rib chiqilmoqda.<br><br>Admin sizni tasdiqlagach optom narxlar va buyurtma ochiladi. Tez orada bog\'lanamiz.'); return; }
+    DATA = {...DATA, products:d.products||[], shelves:d.shelves||[], categories:d.categories||[]};
+    renderShop();
+  }catch(e){ gateMsg('Katalogni yuklab bo\'lmadi. Birozdan so\'ng qayta urinib ko\'ring.'); }
+}
+function gateMsg(html){
+  el('shelves').innerHTML=''; el('grid').innerHTML=''; el('cats').innerHTML='';
+  el('empty').style.display='block'; el('empty').innerHTML=html;
 }
 
 /* ---------- DO'KON ---------- */
