@@ -161,11 +161,13 @@ const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g
 function toast(m){ const t=el('toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',1600); }
 
 async function apiGet(path){
+  if(!INIT) throw new Error('no-init');   // Telegram Web ba'zan initData bermaydi
   if(!DATA.api_url) throw new Error('no-api');
   const r = await fetch(DATA.api_url + path, {headers:{'X-Init-Data': INIT}});
   if(!r.ok) throw new Error('http'+r.status);
   return r.json();
 }
+const PHONE_NOTE = `<div class="empty">📱 Bu bo'lim telefoningizdagi <b>Telegram ilovasida</b> ochilganda ishlaydi.<br><br>Brauzer (Telegram Web) bu ma'lumotni xavfsizlik sababli bermaydi.</div>`;
 
 async function load(){
   try{
@@ -299,7 +301,7 @@ async function loadHistory(){
         <div class="hd"><span>📅 ${esc(o.date)}</span><span>${esc(o.total_text)}</span></div>
         <div class="hi">${o.items.map(i=>'• '+esc(i.name)+(i.qty?(' × '+i.qty):'')).join('<br>')}</div>
       </div>`).join('');
-  }catch(e){ el('histBody').innerHTML='<div class="empty">Tarixni yuklab bo\'lmadi. Birozdan so\'ng qayta oching.</div>'; }
+  }catch(e){ el('histBody').innerHTML = (e.message==='no-init') ? PHONE_NOTE : '<div class="empty">Tarixni yuklab bo\'lmadi. Birozdan so\'ng qayta oching.</div>'; }
 }
 async function loadBalance(){
   try{
@@ -311,7 +313,7 @@ async function loadBalance(){
         <div class="balance-cap">Sizning joriy balansingiz (keshbek / bonus)</div>
       </div>
       <div class="note">Balans do'kondagi xaridlaringizdan to'planadi va keyingi xaridda ishlatilishi mumkin.</div>`;
-  }catch(e){ el('balBody').innerHTML='<div class="empty">Balansni yuklab bo\'lmadi.</div>'; }
+  }catch(e){ el('balBody').innerHTML = (e.message==='no-init') ? PHONE_NOTE : '<div class="empty">Balansni yuklab bo\'lmadi.</div>'; }
 }
 async function loadProfile(){
   try{
@@ -326,7 +328,7 @@ async function loadProfile(){
       </div>
       <div class="note">ℹ️ Ma'lumotlarni o'zgartirish uchun do'konga murojaat qiling.</div>
       <div class="panel"><div class="row"><span class="k">🏷 Optom</span><span class="v">${fmt(OPTOM_MIN)} dan ${OPTOM_PCT}% chegirma</span></div></div>`;
-  }catch(e){ el('profBody').innerHTML='<div class="empty">Ma\'lumotni yuklab bo\'lmadi.</div>'; }
+  }catch(e){ el('profBody').innerHTML = (e.message==='no-init') ? PHONE_NOTE : '<div class="empty">Ma\'lumotni yuklab bo\'lmadi.</div>'; }
 }
 
 /* ---------- navigatsiya ---------- */
