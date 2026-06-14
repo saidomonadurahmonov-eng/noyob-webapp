@@ -309,11 +309,37 @@ function cAdj(id,d){
   if(q<=0) delete cart[id]; else cart[id].qty=q;
   updateBadge(); renderCart();
 }
-function checkout(){
+let ordering = false;
+async function checkout(){
+  if(ordering) return;
   const items = Object.values(cart).map(c=>({id:c.id,name:c.name,price:c.price,qty:c.qty}));
   if(!items.length) return;
-  if(tg && tg.sendData){ tg.sendData(JSON.stringify({v:1, items})); }
-  else alert('Bu tugma faqat Telegram ichida ishlaydi.');
+  // Backend API orqali (Menu/inline'dan ham ishlaydi). initData yo'q bo'lsa sendData zaxira.
+  if(INIT && DATA.api_url){
+    ordering = true;
+    try{
+      const r = await fetch(DATA.api_url + '/api/order', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Init-Data':INIT},
+        body: JSON.stringify({items})
+      });
+      const d = await r.json();
+      if(d.ok){
+        cart = {}; updateBadge();
+        showOrderDone(d.text || "✅ Buyurtmangiz qabul qilindi!");
+      } else {
+        toast(d.text || "Xatolik. Qayta urinib ko'ring.");
+      }
+    }catch(e){ toast("Tармoq xatosi. Qayta urinib ko'ring."); }
+    finally{ ordering = false; }
+  } else if(tg && tg.sendData){
+    tg.sendData(JSON.stringify({v:1, items}));
+  } else {
+    alert('Buyurtma berish faqat Telegram ilovasida ishlaydi.');
+  }
+}
+function showOrderDone(text){
+  el('cartBody').innerHTML = `<div class="panel" style="text-align:center"><div style="font-size:40px">✅</div><div style="white-space:pre-wrap;font-size:14px;line-height:1.5;margin-top:8px">${text.replace(/<[^>]+>/g,'')}</div></div><button class="bigbtn" style="margin:0 16px" onclick="switchView('shop')">🛍 Xaridni davom ettirish</button>`;
 }
 
 /* ---------- TARIX / BALANS / KABINET ---------- */
