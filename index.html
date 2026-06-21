@@ -95,7 +95,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sheet .meta{color:var(--hint);font-size:13px;margin-bottom:14px}
 .qtyrow{display:flex;align-items:center;gap:14px;margin:10px 0 16px}
 .qtyrow button{width:44px;height:44px;border-radius:12px;border:none;background:var(--card);font-size:22px;cursor:pointer;color:var(--text)}
-.qtyrow .qv{font-size:18px;font-weight:700;min-width:40px;text-align:center}
+.qtyrow .qv{font-size:18px;font-weight:700;width:72px;height:44px;text-align:center;border:1px solid var(--hint);border-radius:12px;background:var(--card);color:var(--text);outline:none}
+.ctr input.cq{width:52px;height:32px;text-align:center;font-size:15px;font-weight:700;border:1px solid var(--hint);border-radius:8px;background:var(--bg);color:var(--text);outline:none}
+.qv::-webkit-outer-spin-button,.qv::-webkit-inner-spin-button,.cq::-webkit-outer-spin-button,.cq::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.qv,.cq{-moz-appearance:textfield}
 .sheet .addbtn{width:100%;border:none;border-radius:12px;padding:14px;background:var(--accent);color:var(--accent-text);font-size:16px;font-weight:700;cursor:pointer}
 .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(30,30,30,.92);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;z-index:99;display:none}
 .spin{text-align:center;color:var(--hint);padding:40px;font-size:14px}
@@ -305,14 +308,17 @@ function openProduct(id){
       <div class="price">${p.old_price?`<span class="oldp" style="font-size:16px">${fmt(p.old_price)}</span> `:''}${fmt(p.price)}${p.disc?` <span class="discbadge" style="position:static;display:inline-block">-${p.disc}%</span>`:''}</div>
       <div class="meta">✅ Sotuvda mavjud${p.sku?(' · Artikul: '+esc(p.sku)):''}</div>
       <div class="qtyrow">
-        <button onclick="mAdj(-1)">−</button><div class="qv" id="mqv">1</div><button onclick="mAdj(1)">+</button>
+        <button onclick="mAdj(-1)">−</button><input class="qv" id="mqv" type="number" inputmode="numeric" min="1" max="999" value="1" oninput="mSet(this.value)" onchange="mSync()"><button onclick="mAdj(1)">+</button>
       </div>
       <button class="addbtn" onclick="mAddGo()">🛒 Savatga qo'shish</button>
     </div>`;
   el('pmodal').classList.add('show');
 }
-function mAdj(d){ mQty=Math.max(1,Math.min(999,mQty+d)); el('mqv').textContent=mQty; }
-function mAddGo(){ addToCart(mId,mQty); el('pmodal').classList.remove('show'); }
+function mClamp(n){ n=parseInt(n); if(isNaN(n)||n<1) n=1; if(n>999) n=999; return n; }
+function mAdj(d){ mQty=mClamp(mQty+d); el('mqv').value=mQty; }
+function mSet(v){ const n=parseInt(v); if(!isNaN(n)) mQty=Math.min(999,Math.max(1,n)); }   // yozayotganda erkin
+function mSync(){ mQty=mClamp(el('mqv').value); el('mqv').value=mQty; }                      // fokusdan chiqqanda to'g'rilaydi
+function mAddGo(){ mSync(); addToCart(mId,mQty); el('pmodal').classList.remove('show'); }
 
 /* ---------- SAVAT ---------- */
 function OPTOM_PCT(){ return DATA.optom_pct||0; }
@@ -331,7 +337,7 @@ function renderCart(){
         <div class="ci">
           ${c.photo?`<img src="${c.photo}">`:`<div style="width:54px;height:54px;border-radius:10px;background:#e8e8ee;display:flex;align-items:center;justify-content:center">📦</div>`}
           <div class="nm">${esc(c.name)}<br><b>${fmt(c.price*c.qty)}</b></div>
-          <div class="ctr"><button onclick="cAdj('${c.id}',-1)">−</button><span>${c.qty}</span><button onclick="cAdj('${c.id}',1)">+</button></div>
+          <div class="ctr"><button onclick="cAdj('${c.id}',-1)">−</button><input class="cq" type="number" inputmode="numeric" min="1" max="999" value="${c.qty}" onchange="cSet('${c.id}',this.value)"><button onclick="cAdj('${c.id}',1)">+</button></div>
         </div>`).join('')}
     </div>
     <div class="cartbox">
@@ -349,6 +355,11 @@ function cAdj(id,d){
   let q=Math.min(999,cart[id].qty+d);
   if(q<=0) delete cart[id]; else cart[id].qty=q;
   updateBadge(); renderCart();
+}
+function cSet(id,v){   // savatда qo'lda son kiritish
+  if(!cart[id]) return;
+  let q=parseInt(v); if(isNaN(q)||q<1) q=1; if(q>999) q=999;
+  cart[id].qty=q; updateBadge(); renderCart();
 }
 let ordering = false;
 async function checkout(){
