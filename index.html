@@ -153,6 +153,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 const tg = window.Telegram ? Telegram.WebApp : null;
 if (tg) { tg.ready(); tg.expand(); }
 const INIT = tg ? (tg.initData || '') : '';
+// Standalone APK/brauzer: Telegram-tasdiqlangan web-sessiya tokeni
+let SESS = (!INIT) ? (localStorage.getItem('noyob_ws') || '') : '';
+function hasAuth(){ return !!(INIT || SESS); }
+function authHeaders(extra){
+  const h = Object.assign({}, extra || {});
+  if (INIT) h['X-Init-Data'] = INIT;
+  else if (SESS) h['X-Web-Auth'] = SESS;
+  return h;
+}
+function clearSess(){ SESS=''; try{ localStorage.removeItem('noyob_ws'); }catch(e){} }
+let _logging = false;
+async function webLogin(btn){
+  if (_logging) return; _logging = true;
+  const orig = btn ? btn.textContent : '';
+  try{
+    if(!DATA.api_url){ toast('API topilmadi'); return; }
+    if(btn) btn.textContent = '⏳ Telegram ochilmoqda...';
+    const r = await fetch(DATA.api_url + '/api/web/auth/start', {method:'POST'});
+    const d = await r.json();
+    if(!d.deeplink){ toast('Xatolik, qayta urining'); if(btn) btn.textContent=orig; return; }
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(d.deeplink);
+    else window.open(d.deeplink, '_blank');
+    if(btn) btn.textContent = '⏳ Botda tasdiqlang...';
+    for (let i=0;i<90;i++){
+      await new Promise(s=>setTimeout(s,2000));
+      try{
+        const pr = await fetch(DATA.api_url + '/api/web/auth/poll?nonce=' + encodeURIComponent(d.nonce));
+        const pd = await pr.json();
+        if(pd.token){ localStorage.setItem('noyob_ws', pd.token); location.reload(); return; }
+      }catch(e){}
+    }
+    toast('Vaqt tugadi, qayta urining'); if(btn) btn.textContent=orig;
+  } finally { _logging = false; }
+}
+const LOGIN_HTML = `<div class="empty">📲 Ilovadan to'liq foydalanish (buyurtma, tarix, balans) uchun <b>Telegram orqali bir marta kiring</b>.<br><br><button onclick="webLogin(this)" style="background:var(--accent);color:var(--accent-text);border:none;border-radius:12px;padding:13px 24px;font-size:15px;font-weight:700;cursor:pointer">📲 Telegram orqali kirish</button></div>`;
 
 let DATA = {products: [], categories: [], api_url: ''};
 let cart = {};
@@ -165,13 +200,15 @@ const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g
 function toast(m){ const t=el('toast'); t.textContent=m; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',1600); }
 
 async function apiGet(path){
-  if(!INIT) throw new Error('no-init');   // Telegram Web ba'zan initData bermaydi
+  if(!hasAuth()) throw new Error('no-auth');
   if(!DATA.api_url) throw new Error('no-api');
-  const r = await fetch(DATA.api_url + path, {headers:{'X-Init-Data': INIT}});
+  const r = await fetch(DATA.api_url + path, {headers: authHeaders()});
+  if(r.status===401){ clearSess(); throw new Error('no-auth'); }
   if(!r.ok) throw new Error('http'+r.status);
   return r.json();
 }
-const PHONE_NOTE = `<div class="empty">📱 Bu bo'lim telefoningizdagi <b>Telegram ilovasida</b> ochilganda ishlaydi.<br><br>Brauzer (Telegram Web) bu ma'lumotni xavfsizlik sababli bermaydi.</div>`;
+// Auth yo'q bo'lsa Telegram orqali kirish taklif qilinadi
+const PHONE_NOTE = LOGIN_HTML;
 
 async function load(){
   try{
@@ -189,9 +226,10 @@ async function load(){
 
 // Himoyalangan (optom) ilova: katalog API'dan, faqat tasdiqlangan mijozga
 async function loadAuthedCatalog(){
-  if(!INIT){ el('shelves').innerHTML=''; el('grid').innerHTML=''; el('empty').style.display='block'; el('empty').innerHTML='📱 Optom katalogni telefoningizdagi <b>Telegram ilovasida</b> oching.'; return; }
+  if(!hasAuth()){ el('shelves').innerHTML=''; el('grid').innerHTML=''; el('empty').style.display='block'; el('empty').innerHTML=LOGIN_HTML; return; }
   try{
-    const r = await fetch(DATA.api_url + '/api/catalog', {headers:{'X-Init-Data': INIT}});
+    const r = await fetch(DATA.api_url + '/api/catalog', {headers: authHeaders()});
+    if(r.status===401){ clearSess(); el('empty').style.display='block'; el('empty').innerHTML=LOGIN_HTML; return; }
     const d = await r.json();
     if(d.linked===false){ gateMsg('📞 Avval botga telefon raqamingizni yuboring.'); return; }
     if(d.approved===false){ gateMsg('⏳ So\'rovingiz ko\'rib chiqilmoqda.<br><br>Admin sizni tasdiqlagach optom narxlar va buyurtma ochiladi. Tez orada bog\'lanamiz.'); return; }
@@ -317,15 +355,16 @@ async function checkout(){
   if(ordering) return;
   const items = Object.values(cart).map(c=>({id:c.id,name:c.name,price:c.price,qty:c.qty}));
   if(!items.length) return;
-  // Backend API orqali (Menu/inline'dan ham ishlaydi). initData yo'q bo'lsa sendData zaxira.
-  if(INIT && DATA.api_url){
+  // Backend API orqali (Menu/inline/APK'dan ham ishlaydi).
+  if(hasAuth() && DATA.api_url){
     ordering = true;
     try{
       const r = await fetch(DATA.api_url + '/api/order', {
         method:'POST',
-        headers:{'Content-Type':'application/json','X-Init-Data':INIT},
+        headers: authHeaders({'Content-Type':'application/json'}),
         body: JSON.stringify({items})
       });
+      if(r.status===401){ clearSess(); toast('Avval Telegram orqali kiring.'); switchView('profile'); return; }
       const d = await r.json();
       if(d.ok){
         cart = {}; updateBadge();
@@ -338,7 +377,9 @@ async function checkout(){
   } else if(tg && tg.sendData){
     tg.sendData(JSON.stringify({v:1, items}));
   } else {
-    alert('Buyurtma berish faqat Telegram ilovasida ishlaydi.');
+    // Standalone APK — Telegram orqali kirish kerak
+    toast('Buyurtma uchun avval Telegram orqali kiring.');
+    switchView('profile');
   }
 }
 function showOrderDone(text){
@@ -356,7 +397,7 @@ async function loadHistory(){
         <div class="hd"><span>📅 ${esc(o.date)}</span><span>${esc(o.total_text)}</span></div>
         <div class="hi">${o.items.map(i=>'• '+esc(i.name)+(i.qty?(' × '+i.qty):'')).join('<br>')}</div>
       </div>`).join('');
-  }catch(e){ el('histBody').innerHTML = (e.message==='no-init') ? PHONE_NOTE : '<div class="empty">Tarixni yuklab bo\'lmadi. Birozdan so\'ng qayta oching.</div>'; }
+  }catch(e){ el('histBody').innerHTML = (e.message==='no-auth') ? PHONE_NOTE : '<div class="empty">Tarixni yuklab bo\'lmadi. Birozdan so\'ng qayta oching.</div>'; }
 }
 async function loadBalance(){
   try{
@@ -368,7 +409,7 @@ async function loadBalance(){
         <div class="balance-cap">Sizning joriy balansingiz (keshbek / bonus)</div>
       </div>
       <div class="note">Balans do'kondagi xaridlaringizdan to'planadi va keyingi xaridda ishlatilishi mumkin.</div>`;
-  }catch(e){ el('balBody').innerHTML = (e.message==='no-init') ? PHONE_NOTE : '<div class="empty">Balansni yuklab bo\'lmadi.</div>'; }
+  }catch(e){ el('balBody').innerHTML = (e.message==='no-auth') ? PHONE_NOTE : '<div class="empty">Balansni yuklab bo\'lmadi.</div>'; }
 }
 async function loadProfile(){
   try{
@@ -383,7 +424,7 @@ async function loadProfile(){
       </div>
       <div class="note">ℹ️ Ma'lumotlarni o'zgartirish uchun do'konga murojaat qiling.</div>
       ${OPTOM_PCT()>0?`<div class="panel"><div class="row"><span class="k">🏷 Optom</span><span class="v">${fmt(OPTOM_MIN())} dan ${OPTOM_PCT()}% chegirma</span></div></div>`:''}`;
-  }catch(e){ el('profBody').innerHTML = (e.message==='no-init') ? PHONE_NOTE : '<div class="empty">Ma\'lumotni yuklab bo\'lmadi.</div>'; }
+  }catch(e){ el('profBody').innerHTML = (e.message==='no-auth') ? PHONE_NOTE : '<div class="empty">Ma\'lumotni yuklab bo\'lmadi.</div>'; }
 }
 
 /* ---------- navigatsiya ---------- */
